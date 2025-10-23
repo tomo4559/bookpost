@@ -1,0 +1,12 @@
+# HTTP通信・API
+requests>=2.31.0
+
+# HTMLスクレイピング
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Markdown → HTML変換
+markdown>=3.5.0
+
+# 画像処理（サイズチェック・リサイズ）
+Pillow>=10.0.0

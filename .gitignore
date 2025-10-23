@@ -1,0 +1,48 @@
+# 設定ファイル（機密情報含む）
+config.json
+
+# データディレクトリ（生成ファイル・キャッシュ）
+data/
+data/books/
+data/reviews/
+data/outputs/
+data/images/
+data/logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 仮想環境
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ログファイル
+*.log
+
+# テスト
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ビルド
+build/
+dist/
+*.egg-info/

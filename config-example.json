@@ -1,0 +1,7 @@
+{
+  "wp_url": "https://your-site.com/wp-json/wp/v2/posts",
+  "wp_user": "your_username",
+  "wp_app_password": "xxxx xxxx xxxx xxxx xxxx xxxx",
+  "wp_category_id": 123,
+  "wp_default_tags": ["読書", "書評"]
+}
