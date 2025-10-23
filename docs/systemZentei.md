@@ -11,13 +11,13 @@
 ---
 
 ## 外部サービス・API構成
-| 区分 | サービス名 | 用途 | 接続方法 |
-|------|-------------|------|-----------|
-| 書籍情報取得 | Google Books API | ISBN・書誌情報の取得 | main.py → fetch_book_data() |
-| レビュー収集 | Bing Search | 書評要約の収集 | scraper.py |
-| 記事生成 | ChatGPT / Perplexity | レビュー要約からMarkdown記事生成 | 手動（ブラウザ貼付） |
-| 画像生成 | Bing Image Creator / Canva / Leonardo.ai | 記事用サムネイル画像生成 | 手動（ブラウザ操作） |
-| 投稿処理 | WordPress REST API | 記事本文＋画像投稿 | main.py → post_to_wp() |
+| 区分 | サービス名 | 用途 | 接続方法 | 認証 |
+|------|-------------|------|-----------|------|
+| 書籍情報取得 | Google Books API | ISBN・書誌情報の取得 | main.py → fetch_book_data() | **不要**（無料枠） |
+| レビュー収集 | Bing検索 | 書評要約の収集 | scraper.py → scrape_reviews() | **不要**（スクレイピング） |
+| 記事生成 | ChatGPT / Perplexity | レビュー要約からMarkdown記事生成 | 手動（ブラウザ貼付） | - |
+| 画像生成 | Bing Image Creator / Canva / Leonardo.ai | 記事用サムネイル画像生成 | 手動（ブラウザ操作） | - |
+| 投稿処理 | WordPress REST API | 記事本文＋画像投稿 | main.py → post_to_wp() | アプリケーションパスワード |
 
 ---
 
@@ -25,15 +25,108 @@
 | 項目 | 内容 |
 |------|------|
 | 投稿サイト | https://freetomo.com/ |
-| 投稿カテゴリ | 読書レビュー |
-| 投稿形式 | Markdown（自動変換して投稿） |
+| 投稿カテゴリ | 読書レビュー（事前にカテゴリIDを取得） |
+| 投稿ステータス | **draft（下書き）** |
+| 投稿形式 | Markdown → HTML自動変換 |
+| アイキャッチ画像 | 自動設定（thumbnail_{isbn}.png） |
+| タグ | 自動付与（書籍名・著者名） |
 | 接続方式 | REST API + アプリケーションパスワード |
-| 設定ファイル | `config.json` に保存（例：`wp_url`, `wp_user`, `wp_app_password`） |
+| 設定ファイル | `config.json` に保存 |
+
+**config.json 必須項目**:
+```json
+{
+  "wp_url": "https://freetomo.com/wp-json/wp/v2/posts",
+  "wp_user": "your_username",
+  "wp_app_password": "xxxx xxxx xxxx xxxx",
+  "wp_category_id": 123
+}
+```
+
+---
+
+## データ管理
+| ディレクトリ | 内容 | 保存形式 | 用途 |
+|--------------|------|----------|------|
+| `/data/books/` | 書籍情報キャッシュ | `book_{isbn}.json` | APIリクエスト節約 |
+| `/data/reviews/` | 収集したレビュー要約 | `review_{isbn}.txt` | AI記事生成の素材 |
+| `/data/outputs/` | 生成した記事 | `article_{isbn}.md` | WordPress投稿用 |
+| `/data/images/` | サムネイル画像 | `thumbnail_{isbn}.png` | アイキャッチ画像 |
+| `/data/logs/` | 実行ログ | `app.log` | エラー追跡・デバッグ |
+
+---
+
+## ISBN形式
+| 項目 | 仕様 |
+|------|------|
+| 対応形式 | **ISBN-13（ハイフンなし）統一** |
+| 入力形式 | ハイフンあり/なし両方受付可能 |
+| 内部処理 | ISBN-10 → ISBN-13自動変換 |
+| 例 | 入力: `978-4-123-45678-9` → 内部: `9784123456789` |
+
+---
+
+## エラーハンドリング方針
+| 種別 | 対応 |
+|------|------|
+| APIエラー | **リトライなし**、ログ出力のみ |
+| ISBN未発見 | ログ出力: "該当するISBNが見つかりませんでした" |
+| レビュー0件 | ログ出力: "レビューがありませんでした" |
+| WordPress投稿失敗 | ログ出力: "記事投稿失敗: {詳細}" |
+
+---
+
+## ログ設定
+| 項目 | 内容 |
+|------|------|
+| 保存先 | `/data/logs/app.log` |
+| ログレベル | **INFO**, **ERROR** |
+| フォーマット | `[日時] レベル: メッセージ` |
+| 出力先 | ファイル＋コンソール（両方） |
+
+---
+
+## 画像処理
+| 項目 | 仕様 |
+|------|------|
+| 対応形式 | **PNG固定** |
+| ファイルサイズ | **2MB以下**（超過時は自動リサイズ） |
+| リサイズ方法 | Pillow使用、アスペクト比維持 |
+
+---
+
+## 依存パッケージ
+```txt
+requests>=2.31.0          # HTTP通信・API
+beautifulsoup4>=4.12.0    # HTMLスクレイピング
+lxml>=4.9.0               # HTMLパーサー（高速化）
+markdown>=3.5.0           # Markdown → HTML変換
+Pillow>=10.0.0            # 画像処理（リサイズ）
+```
 
 ---
 
 ## 注意点
-- API課金はすべて無料プランを利用（ChatGPT以外も可）
+- API課金はすべて無料プランを利用（Google Books無認証枠）
 - OpenAI APIは使用せず、手動操作でAIにプロンプトを投入
 - 出力結果（.md / .png）は `/data/` 配下に必ず保存
-- WordPress投稿は main.py 実行時に自動投稿まで完結
+- WordPress投稿は **常にdraft（下書き）** で保存
+- `config.json` と `/data/` ディレクトリは `.gitignore` で除外
+- Google Books API無料枠: 1日1000リクエスト（1日1冊運用なら十分）
+
+---
+
+## セキュリティ
+| 項目 | 対応 |
+|------|------|
+| 認証情報 | `config.json` に保存、Gitにコミットしない |
+| アプリケーションパスワード | WordPress管理画面で生成 |
+| スクレイピング | User-Agent設定、1秒待機（負荷軽減） |
+
+---
+
+## バージョン情報
+| バージョン | 日付 | 変更内容 |
+|------------|------|----------|
+| 1.0.0 | 2024-10-24 | 初版リリース |
+| 1.1.0 | 2024-10-24 | 仕様確定版（API認証、ISBN形式、エラーハンドリング明記） |
