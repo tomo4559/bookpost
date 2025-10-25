@@ -171,22 +171,38 @@ def scrape_amazon_reviews(isbn, logger):
             
             soup = BeautifulSoup(response.text, 'lxml')
             
-            # レビューセクションを探す
-            review_elements = soup.find_all('div', {'data-hook': 'review'}, limit=5)
+            # レビューセクションを探す（liタグ、data-hook="review"）
+            review_elements = soup.find_all('li', {'data-hook': 'review'}, limit=5)
+            
+            logger.info(f"レビュー要素発見: {len(review_elements)}件")
             
             for i, review in enumerate(review_elements, 1):
                 try:
                     # レビュータイトル
                     title_elem = review.find('a', {'data-hook': 'review-title'})
-                    title = title_elem.get_text(strip=True) if title_elem else ''
+                    if title_elem:
+                        # spanタグ内のテキストを取得
+                        title_span = title_elem.find('span')
+                        title = title_span.get_text(strip=True) if title_span else title_elem.get_text(strip=True)
+                    else:
+                        title = ''
                     
                     # 評価
                     rating_elem = review.find('i', {'data-hook': 'review-star-rating'})
-                    rating = rating_elem.get_text(strip=True) if rating_elem else ''
+                    if rating_elem:
+                        rating_span = rating_elem.find('span', class_='a-icon-alt')
+                        rating = rating_span.get_text(strip=True) if rating_span else ''
+                    else:
+                        rating = ''
                     
                     # レビュー本文
                     body_elem = review.find('span', {'data-hook': 'review-body'})
-                    body = body_elem.get_text(strip=True) if body_elem else ''
+                    if body_elem:
+                        # レビュー本文はdiv内のspanに含まれる
+                        body_content = body_elem.find('span')
+                        body = body_content.get_text(strip=True) if body_content else body_elem.get_text(strip=True)
+                    else:
+                        body = ''
                     
                     if title or body:
                         results.append({
